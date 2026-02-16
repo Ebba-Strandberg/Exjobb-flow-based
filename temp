@@ -1,0 +1,9 @@
+from GSK import set_GSK
+
+GSKtype='standard'
+#GSKtype='produktionsfaktor'
+#GSKtype='differens'
+produktionstyp='Coal', 'Oil', 'Gas', 'Hydro', 'Pump storage', 'Biogas', 'Biomass', 'Other Biofuel', 'Peat', 'Waste', 'Other fossil fuel','Storage'
+
+
+set_GSK(produktionstyp,GSKtype)
