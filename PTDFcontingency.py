@@ -39,10 +39,10 @@ def run_ptdf(app):
     ptdf = app.GetFromStudyCase("ComVstab")
     #ptdf.p_bus.Clear()
 
-    AllaArea = app.GetCalcRelevantObjects('*.ElmArea')
+    # AllaArea = app.GetCalcRelevantObjects('*.ElmArea')
 
-    for area in AllaArea:
-        ptdf.p_bus.AddRef(area)
+    # for area in AllaArea:
+    #     ptdf.p_bus.AddRef(area)
 
     ptdf.frmElmFilt4Res = 0
     ptdf.iopt_method = 0  # det här indikerar AC men jag tycker nästan vi borde köra DC då vår teori bygger på det
@@ -160,7 +160,13 @@ def run_ptdf_per_line_complete(app, selected_areas, include_parallel=False):
 
         # Exportera PTDF med unikt namn
         for l in lines_to_outage:
-            export_ptdf(app, l.loc_name)
+            #export_ptdf(app, l.loc_name)
+            #group_export_name = "_".join(lines_to_outage[0].loc_name.split("_")[:-1])
+            name = lines_to_outage[0].loc_name
+            group_export_name = name.rsplit("_", 1)[0] if name.rsplit("_", 1)[1].isdigit() else name
+
+
+            export_ptdf(app, group_export_name)
 
         # Koppla tillbaka ledningarna
         for l in lines_to_outage:
@@ -176,5 +182,5 @@ selected_areas = ['Dorne', 'Reach', 'Crownlands']
 import powerfactory as pf
 app=pf.GetApplication()
 
-run_ptdf_per_line_complete(app, selected_areas, include_parallel=True)
+run_ptdf_per_line_complete(app, selected_areas, include_parallel=False)
 
