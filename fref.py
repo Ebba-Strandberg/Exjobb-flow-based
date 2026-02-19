@@ -14,9 +14,12 @@ def run_ldf(app, refbus=None):
     -------
     None
     """ 
+
     if refbus is None:
         refbus = app.GetCalcRelevantObjects('*BB2_KiLa380.ElmTerm')[0] # get first busbar as reference busbar
     ldf = app.GetFromStudyCase('ComLdf') # Calling ldf Command object (ComLdf)
+    ldf.iopt_apdist = 0 # set active power control to "as Dispatched"
+    ldf.iPbalancing = 0 # set balancing to "by reference machine"
     ldf.rembar=refbus # set reference busbar
     ldf.Execute() # executing the load flow command
 
@@ -136,15 +139,13 @@ def get_CNECs(app, selected_areas: list[str], loading: int, include_parallel: bo
             for l in lines_to_outage:
                 l.SetAttribute('outserv', 1)
 
-            # print("Outaging:", [l.loc_name for l in lines_to_outage])
+            print("Outaging:", [l.loc_name for l in lines_to_outage])
 
             # bestämma namn på contingency baserat på om det är en eller två ledningar som kopplas bort
             if line.loc_name[-1].isdigit():
                 cont_name = lines_to_outage[0].loc_name[:-2]
-                print(cont_name)
             else:
                 cont_name = lines_to_outage[0].loc_name
-                print(cont_name)
 
             # Kör load flow
             run_ldf(app)
@@ -157,7 +158,7 @@ def get_CNECs(app, selected_areas: list[str], loading: int, include_parallel: bo
             for l in lines_to_outage:
                 l.SetAttribute('outserv', 0)
 
-            # print("Restored:", [l.loc_name for l in lines_to_outage])
+            print("Restored:", [l.loc_name for l in lines_to_outage])
 
             CNECs_final.update(CNECs)
 
