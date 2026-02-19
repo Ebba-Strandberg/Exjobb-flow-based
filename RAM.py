@@ -127,38 +127,70 @@ def calculate_Fmax(app, element_names):
 
 
 
-def calculate_RAM(app, element_names, F_RA=0, F_RM=0, F_AAC=0, RA_is_percent=False):
+def calculate_RAM(app, element_names, F_RA=0, F_RM=0, F_AAC=0, RA_is_percent=False, PositivRAM=True):
 
-    # Hämta F0 och Fmax
-    F0 = calculate_F0(app, element_names)
-    Fmax = calculate_Fmax(app, element_names)
-
-    # Säkerställ procentform (10 → 0.1)
-    if RA_is_percent:
-        if F_RA > 1:
-            F_RA = F_RA / 100
-
-        RAM = (Fmax - F0) * F_RA
-
+    if PositivRAM:
+        # Hämta F0 och Fmax
+        F0 = calculate_F0(app, element_names)
+        Fmax = calculate_Fmax(app, element_names)
+    
+        # Säkerställ procentform (10 → 0.1)
+        if RA_is_percent:
+            if F_RA > 1:
+                F_RA = F_RA / 100
+    
+            RAM = (Fmax - F0) * F_RA
+    
+        else:
+            # Gör till Series om det behövs
+            if not isinstance(F_RA, pd.Series):
+                F_RA = pd.Series(F_RA, index=element_names)
+    
+            if not isinstance(F_RM, pd.Series):
+                F_RM = pd.Series(F_RM, index=element_names)
+    
+            if not isinstance(F_AAC, pd.Series):
+                F_AAC = pd.Series(F_AAC, index=element_names)
+    
+            # Säkerställ samma index
+            F_RA = F_RA.reindex(Fmax.index)
+            F_RM = F_RM.reindex(Fmax.index)
+            F_AAC = F_AAC.reindex(Fmax.index)
+            F0 = F0.reindex(Fmax.index)
+    
+            RAM = Fmax + F_RA - F_RM - F_AAC - F0
+            
     else:
-        # Gör till Series om det behövs
-        if not isinstance(F_RA, pd.Series):
-            F_RA = pd.Series(F_RA, index=element_names)
-
-        if not isinstance(F_RM, pd.Series):
-            F_RM = pd.Series(F_RM, index=element_names)
-
-        if not isinstance(F_AAC, pd.Series):
-            F_AAC = pd.Series(F_AAC, index=element_names)
-
-        # Säkerställ samma index
-        F_RA = F_RA.reindex(Fmax.index)
-        F_RM = F_RM.reindex(Fmax.index)
-        F_AAC = F_AAC.reindex(Fmax.index)
-        F0 = F0.reindex(Fmax.index)
-
-        RAM = Fmax + F_RA - F_RM - F_AAC - F0
-
+        # Hämta F0 och Fmax
+        F0 = calculate_F0(app, element_names)
+        Fmax = -calculate_Fmax(app, element_names)
+    
+        # Säkerställ procentform (10 → 0.1)
+        if RA_is_percent:
+            if F_RA > 1:
+                F_RA = F_RA / 100
+    
+            RAM = (Fmax - F0) * F_RA
+    
+        else:
+            # Gör till Series om det behövs
+            if not isinstance(F_RA, pd.Series):
+                F_RA = pd.Series(F_RA, index=element_names)
+    
+            if not isinstance(F_RM, pd.Series):
+                F_RM = pd.Series(F_RM, index=element_names)
+    
+            if not isinstance(F_AAC, pd.Series):
+                F_AAC = pd.Series(F_AAC, index=element_names)
+    
+            # Säkerställ samma index
+            F_RA = F_RA.reindex(Fmax.index)
+            F_RM = F_RM.reindex(Fmax.index)
+            F_AAC = F_AAC.reindex(Fmax.index)
+            F0 = F0.reindex(Fmax.index)
+    
+            RAM = Fmax + F_RA - F_RM - F_AAC - F0 
+            
     return RAM
     
 
