@@ -122,7 +122,7 @@ def filter_df_contingency(df: pd.DataFrame, CNECs: dict | list, CNEs: dict | lis
     
     return df
 
-def find_largest_PTDF(filepathBaseCase: str, filepathContingencyFolder: str, include: int = 1) -> pd.DataFrame:
+def find_largest_PTDF(filepathBaseCase: str, filepathContingencyFolder: str, include: int = 1, exclude: str = None) -> pd.DataFrame:
     """
     Takes a file path to a csv-file including base case PTDFs and a file path to a folder 
     including contingency case PTDFs, and returns the specified number of columns containing the largest values.
@@ -149,7 +149,10 @@ def find_largest_PTDF(filepathBaseCase: str, filepathContingencyFolder: str, inc
         df_cont=csv_to_df(path)
         df_cont.columns = [oldColName + " cont: " + cont_name for oldColName in df_cont.columns]
         df=df.join(df_cont)
-    
+
+    if exclude != None:
+        df = df.loc[:, ~df.columns.str.contains(exclude)]
+
     return _find_largest_PTDF(df, include)
 
 def _find_largest_PTDF(df: pd.DataFrame, include: int = 1) -> pd.DataFrame:
@@ -190,7 +193,7 @@ def _find_largest_PTDF(df: pd.DataFrame, include: int = 1) -> pd.DataFrame:
     # Return new DataFrame with all rows but only the top columns
     return df.loc[:, top_cols_full]
 
-def compare_PTDF(filepathBaseCase: str, filepathContingencyFolder: str, include: int = 1) -> pd.DataFrame:
+def compare_PTDF(filepathBaseCase: str, filepathContingencyFolder: str, include: int = 1, exclude: str = None) -> pd.DataFrame:
     """
     Takes a file path to a csv-file including base case PTDFs and a file path to a folder 
     including contingency case PTDFs, and returns the specified number of columns containing the largest differences.
@@ -218,6 +221,10 @@ def compare_PTDF(filepathBaseCase: str, filepathContingencyFolder: str, include:
         diff = _compare_PTDF(BaseCase_df,df_cont)
         diff.columns = [oldColName + " cont: " + cont_name for oldColName in diff.columns]
         df = pd.concat([df, diff], axis=1)
+    
+
+    if exclude != None:
+        df = df.loc[:, ~df.columns.str.contains(exclude)]
     
     return _find_largest_PTDF(df, include)
 
