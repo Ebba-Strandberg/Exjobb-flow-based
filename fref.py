@@ -71,7 +71,7 @@ def get_CNEs(app, loading=0, areas=None, both=False):
 
 from PTDFcontingency import get_lines_in_areas
 
-def get_CNECs(app, selected_areas: list[str], loading: int, include_parallel: bool=False):
+def get_CNECs(app, selected_areas: list[str], loading: int, include_parallel: bool=False, delta_loading = 0):
 
     """
     Gets critical network element contingencies (CNECs) and their corresponding f_ref values
@@ -99,6 +99,17 @@ def get_CNECs(app, selected_areas: list[str], loading: int, include_parallel: bo
 
     lines = get_lines_in_areas(app, selected_areas)
     CNECs_final = {}
+    
+    
+        # Kör basfall
+    run_ldf(app)
+    
+    # Spara bas-loading (%) för alla linjer
+    base_loading = {
+        line.loc_name: line.GetAttribute('c:loading')
+        for line in lines
+    }
+
 
     # Skapa en dict som grupperar parallella ledningar
     parallel_groups = {}
@@ -151,9 +162,27 @@ def get_CNECs(app, selected_areas: list[str], loading: int, include_parallel: bo
             run_ldf(app)
 
             # Hämta cnecs
-            CNECs=get_CNEs(app,loading=loading,both=True)
-            CNECs = {f"{k} cont: {cont_name}": v for k, v in CNECs.items()}
+            # CNECs=get_CNEs(app,loading=loading,both=True)
+            # CNECs = {f"{k} cont: {cont_name}": v for k, v in CNECs.items()}
+            CNECs = get_CNEs(app, loading=loading, both=True)
 
+            filtered_CNECs = {}
+            
+            for name, value in CNECs.items():
+            
+                obj = next((l for l in lines if l.loc_name == name), None)
+                if obj is None:
+                    continue
+            
+                loading_cont = obj.GetAttribute('c:loading')
+                loading_base = base_loading.get(name, 0)
+            
+                if abs(loading_cont - loading_base) > delta_loading:
+                    filtered_CNECs[f"{name} cont: {cont_name}"] = value
+            
+            CNECs_final.update(filtered_CNECs)
+
+            
             # Koppla tillbaka ledningarna
             for l in lines_to_outage:
                 l.SetAttribute('outserv', 0)
