@@ -71,127 +71,207 @@ def get_CNEs(app, loading=0, areas=None, both=False):
 
 from PTDFcontingency import get_lines_in_areas
 
-def get_CNECs(app, selected_areas: list[str], loading: int, include_parallel: bool=False, delta_loading = 0):
+# def get_CNECs(app, selected_areas: list[str], loading: int, include_parallel: bool=False, delta_loading = 0):
 
-    """
-    Gets critical network element contingencies (CNECs) and their corresponding f_ref values
-    (flow in MW) for a given set of areas, loading threshold, and parallel line inclusion criteria.
-    Contingencies included are all transmission lines (n-1) and all pairs of parallel transmission lines (n-2) 
-    within the selected areas.
+#     """
+#     Gets critical network element contingencies (CNECs) and their corresponding f_ref values
+#     (flow in MW) for a given set of areas, loading threshold, and parallel line inclusion criteria.
+#     Contingencies included are all transmission lines (n-1) and all pairs of parallel transmission lines (n-2) 
+#     within the selected areas.
     
-    Parameters
-    ----------
-    app : application object
-        The PowerFactory application object.
-    loading : float, optional
-        The loading threshold for identifying CNECs.
-    selected_areas : list of str, optional
-        A list of area names to consider for identifying CNCs. 
-    include_parallel : bool, optional
-        If True, include n-2 contingencies for parallel lines in the analysis. Default is False.
+#     Parameters
+#     ----------
+#     app : application object
+#         The PowerFactory application object.
+#     loading : float, optional
+#         The loading threshold for identifying CNECs.
+#     selected_areas : list of str, optional
+#         A list of area names to consider for identifying CNCs. 
+#     include_parallel : bool, optional
+#         If True, include n-2 contingencies for parallel lines in the analysis. Default is False.
 
-    Returns
-    -------
-    dict{str: float}
-        A dictionary with CNEC names as keys and their corresponding f_ref values (flow in MW) as values.
-        Example: {"Line1 cont: Line2": 150.0}
-    """
+#     Returns
+#     -------
+#     dict{str: float}
+#         A dictionary with CNEC names as keys and their corresponding f_ref values (flow in MW) as values.
+#         Example: {"Line1 cont: Line2": 150.0}
+#     """
 
-    lines = get_lines_in_areas(app, selected_areas)
+#     lines = get_lines_in_areas(app, selected_areas)
+#     CNECs_final = {}
+    
+    
+#         # Kör basfall
+#     run_ldf(app)
+    
+#     # Spara bas-loading (%) för alla linjer
+#     base_loading = {
+#         line.loc_name: line.GetAttribute('c:loading')
+#         for line in lines
+#     }
+
+
+#     # Skapa en dict som grupperar parallella ledningar
+#     parallel_groups = {}
+#     if include_parallel:
+#         for line in lines:
+#             group_name = "_".join(line.loc_name.split("_")[:-1]) #den här kollar namnet på ledningen utan den sista siffran
+#             if group_name not in parallel_groups:
+#                 parallel_groups[group_name] = []
+#             parallel_groups[group_name].append(line)
+
+#     visited_groups = set()  # för att inte köra samma grupp flera gånger
+
+#     for line in lines:
+
+#         # Kontrollera om vi redan har hanterat denna grupp
+#         if include_parallel:
+#             group_name = "_".join(line.loc_name.split("_")[:-1])
+#             if group_name in visited_groups:
+#                 continue  # hoppa över, gruppen redan hanterad
+#             visited_groups.add(group_name)
+
+#             # Hämta alla parallella ledningar i denna grupp
+#             group_lines = parallel_groups[group_name]
+
+#             # N-2 logik
+#             if len(group_lines) == 2:
+#                 lines_to_outage = group_lines
+#             elif len(group_lines) >= 3:
+#                 lines_to_outage = group_lines[:2]  # ta de två första
+#             else:
+#                 lines_to_outage = group_lines
+#         else:
+#             lines_to_outage = [line]
+
+#         if lines_to_outage[0].loc_name[-1].isalpha() or lines_to_outage[0].loc_name.endswith('1'):
+
+#             # Koppla bort ledningarna
+#             for l in lines_to_outage:
+#                 l.SetAttribute('outserv', 1)
+
+#             print("Outaging:", [l.loc_name for l in lines_to_outage])
+
+#             # bestämma namn på contingency baserat på om det är en eller två ledningar som kopplas bort
+#             if line.loc_name[-1].isdigit():
+#                 cont_name = lines_to_outage[0].loc_name[:-2]
+#             else:
+#                 cont_name = lines_to_outage[0].loc_name
+
+#             # Kör load flow
+#             run_ldf(app)
+
+#             # Hämta cnecs
+#             # CNECs=get_CNEs(app,loading=loading,both=True)
+#             # CNECs = {f"{k} cont: {cont_name}": v for k, v in CNECs.items()}
+#             CNECs = get_CNEs(app, loading=loading, both=True)
+
+#             filtered_CNECs = {}
+            
+#             for name, value in CNECs.items():
+            
+#                 obj = next((l for l in lines if l.loc_name == name), None)
+#                 if obj is None:
+#                     continue
+            
+#                 loading_cont = obj.GetAttribute('c:loading')
+#                 loading_base = base_loading.get(name, 0)
+            
+#                 if abs(loading_cont - loading_base) > delta_loading:
+#                     filtered_CNECs[f"{name} cont: {cont_name}"] = value
+            
+#             CNECs_final.update(filtered_CNECs)
+
+            
+#             # Koppla tillbaka ledningarna
+#             for l in lines_to_outage:
+#                 l.SetAttribute('outserv', 0)
+
+#             print("Restored:", [l.loc_name for l in lines_to_outage])
+
+#             CNECs_final.update(CNECs)
+
+#     return CNECs_final
+
+
+
+#%%
+
+def get_CNECs(app, selected_areas: list[str], loading: int,
+                    include_parallel: bool=False, delta_loading=0):
+
+    import re
+
     CNECs_final = {}
-    
-    
-        # Kör basfall
+
+    # Kör basfall
     run_ldf(app)
-    
-    # Spara bas-loading (%) för alla linjer
-    base_loading = {
-        line.loc_name: line.GetAttribute('c:loading')
-        for line in lines
-    }
 
+    # --- Basbelastning för alla linjer och trafos i nätet ---
+    all_lines = app.GetCalcRelevantObjects("*.ElmLne")
+    all_trafos = app.GetCalcRelevantObjects("*.ElmTr2")
+    all_objects = all_lines + all_trafos
 
-    # Skapa en dict som grupperar parallella ledningar
-    parallel_groups = {}
+    base_loading = {obj.loc_name: obj.GetAttribute('c:loading') for obj in all_objects}
+
+    # --- Hämta linjer i valda områden ---
+    lines = get_lines_in_areas(app, selected_areas)
+
+    # --- Gruppering för parallella linjer ---
     if include_parallel:
+        parallel_groups = {}
         for line in lines:
-            group_name = "_".join(line.loc_name.split("_")[:-1]) #den här kollar namnet på ledningen utan den sista siffran
-            if group_name not in parallel_groups:
-                parallel_groups[group_name] = []
-            parallel_groups[group_name].append(line)
+            match = re.match(r"(.*)_\d+$", line.loc_name)
+            group_name = match.group(1) if match else line.loc_name
+            parallel_groups.setdefault(group_name, []).append(line)
+        groups = list(parallel_groups.values())
+    else:
+        groups = [[line] for line in lines]
 
-    visited_groups = set()  # för att inte köra samma grupp flera gånger
+    # --- Contingencies ---
+    for group_lines in groups:
 
-    for line in lines:
+        lines_to_outage = group_lines[:2] if include_parallel and len(group_lines) >= 2 else group_lines
 
-        # Kontrollera om vi redan har hanterat denna grupp
-        if include_parallel:
-            group_name = "_".join(line.loc_name.split("_")[:-1])
-            if group_name in visited_groups:
-                continue  # hoppa över, gruppen redan hanterad
-            visited_groups.add(group_name)
+        # Koppla bort
+        for l in lines_to_outage:
+            l.SetAttribute('outserv', 1)
+        print("Outaging:", [l.loc_name for l in lines_to_outage])
 
-            # Hämta alla parallella ledningar i denna grupp
-            group_lines = parallel_groups[group_name]
-
-            # N-2 logik
-            if len(group_lines) == 2:
-                lines_to_outage = group_lines
-            elif len(group_lines) >= 3:
-                lines_to_outage = group_lines[:2]  # ta de två första
-            else:
-                lines_to_outage = group_lines
+        run_ldf(app)
+        if lines_to_outage[0].loc_name[-1].isdigit():
+            cont_name = lines_to_outage[0].loc_name[:-2]
         else:
-            lines_to_outage = [line]
+            cont_name = lines_to_outage[0].loc_name
+        #cont_name = lines_to_outage[0].loc_name
+        CNECs = get_CNEs(app, loading=loading, both=True)
 
-        if lines_to_outage[0].loc_name[-1].isalpha() or lines_to_outage[0].loc_name.endswith('1'):
+        filtered_CNECs = {}
+        for name, value in CNECs.items():
+            # Försök hitta objektet både som linje eller trafo
+            objs = app.GetCalcRelevantObjects(f"{name}.ElmLne") + app.GetCalcRelevantObjects(f"{name}.ElmTr2")
+            if not objs:
+                continue
+            obj = objs[0]
+            loading_cont = obj.GetAttribute('c:loading')
+            loading_base = base_loading.get(obj.loc_name, 0)
 
-            # Koppla bort ledningarna
-            for l in lines_to_outage:
-                l.SetAttribute('outserv', 1)
+            # Kontrollera absolut delta
+            if abs(loading_cont - loading_base) > delta_loading:
+                filtered_CNECs[f"{obj.loc_name} cont: {cont_name}"] = value
 
-            print("Outaging:", [l.loc_name for l in lines_to_outage])
+        CNECs_final.update(filtered_CNECs)
 
-            # bestämma namn på contingency baserat på om det är en eller två ledningar som kopplas bort
-            if line.loc_name[-1].isdigit():
-                cont_name = lines_to_outage[0].loc_name[:-2]
-            else:
-                cont_name = lines_to_outage[0].loc_name
-
-            # Kör load flow
-            run_ldf(app)
-
-            # Hämta cnecs
-            # CNECs=get_CNEs(app,loading=loading,both=True)
-            # CNECs = {f"{k} cont: {cont_name}": v for k, v in CNECs.items()}
-            CNECs = get_CNEs(app, loading=loading, both=True)
-
-            filtered_CNECs = {}
-            
-            for name, value in CNECs.items():
-            
-                obj = next((l for l in lines if l.loc_name == name), None)
-                if obj is None:
-                    continue
-            
-                loading_cont = obj.GetAttribute('c:loading')
-                loading_base = base_loading.get(name, 0)
-            
-                if abs(loading_cont - loading_base) > delta_loading:
-                    filtered_CNECs[f"{name} cont: {cont_name}"] = value
-            
-            CNECs_final.update(filtered_CNECs)
-
-            
-            # Koppla tillbaka ledningarna
-            for l in lines_to_outage:
-                l.SetAttribute('outserv', 0)
-
-            print("Restored:", [l.loc_name for l in lines_to_outage])
-
-            CNECs_final.update(CNECs)
+        # Koppla tillbaka
+        for l in lines_to_outage:
+            l.SetAttribute('outserv', 0)
+        print("Restored:", [l.loc_name for l in lines_to_outage])
 
     return CNECs_final
+
+
+
+#%%
 
 def get_transmission_lines(app,includeHVDC=False):
     """
@@ -221,6 +301,7 @@ def get_transmission_lines(app,includeHVDC=False):
             if 'DC' in line.typ_id.loc_name: # check if line is a HVDC line
                 transmissionLines[line.loc_name]= 'Line Type DC in '+line.GetAttribute('e:cpArea').loc_name
     return transmissionLines #value is a str that starts with line type and ends with area name 
+
 
 
 def print_dict(dict): 
