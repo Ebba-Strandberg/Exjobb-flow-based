@@ -110,65 +110,108 @@ def run_ptdf_per_line(app, selected_areas, include_parallel=False):
 ## denna funktion inkluderar parallella ledningar
 # om det är två parallella ledningar så kopplar den bort båda de parallella, är det tre parallella så kopplar den bort 2 av de 3 parallella
 
-import itertools
+# import itertools
 
+# def run_ptdf_per_line_complete(app, selected_areas, include_parallel=False):
+
+#     lines = get_lines_in_areas(app, selected_areas)
+
+#     # Skapa en dict som grupperar parallella ledningar
+#     parallel_groups = {}
+#     if include_parallel:
+#         for line in lines:
+#             group_name = "_".join(line.loc_name.split("_")[:-1]) #den här kollar namnet på ledningen utan den sista siffran
+#             if group_name not in parallel_groups:
+#                 parallel_groups[group_name] = []
+#             parallel_groups[group_name].append(line)
+
+#     visited_groups = set()  # för att inte köra samma grupp flera gånger
+
+#     for line in lines:
+
+#         # Kontrollera om vi redan har hanterat denna grupp
+#         if include_parallel:
+#             group_name = "_".join(line.loc_name.split("_")[:-1])
+#             if group_name in visited_groups:
+#                 continue  # hoppa över, gruppen redan hanterad
+#             visited_groups.add(group_name)
+
+#             # Hämta alla parallella ledningar i denna grupp
+#             group_lines = parallel_groups[group_name]
+
+#             # N-2 logik
+#             if len(group_lines) == 2:
+#                 lines_to_outage = group_lines
+#             elif len(group_lines) >= 3:
+#                 lines_to_outage = group_lines[:2]  # ta de två första
+#             else:
+#                 lines_to_outage = group_lines
+#         else:
+#             lines_to_outage = [line]
+
+#         # Koppla bort ledningarna
+#         for l in lines_to_outage:
+#             l.SetAttribute('outserv', 1)
+
+#         print("Outaging:", [l.loc_name for l in lines_to_outage])
+
+#         # Kör PTDF
+#         run_ptdf(app)
+
+#         # Exportera PTDF med unikt namn
+#         for l in lines_to_outage:
+#             #export_ptdf(app, l.loc_name)
+#             #group_export_name = "_".join(lines_to_outage[0].loc_name.split("_")[:-1])
+#             name = lines_to_outage[0].loc_name
+#             group_export_name = name.rsplit("_", 1)[0] if name.rsplit("_", 1)[1].isdigit() else name
+
+
+#             export_ptdf(app, group_export_name)
+
+#         # Koppla tillbaka ledningarna
+#         for l in lines_to_outage:
+#             l.SetAttribute('outserv', 0)
+
+#         print("Restored:", [l.loc_name for l in lines_to_outage])
+        
+        
+        #%%
+        
 def run_ptdf_per_line_complete(app, selected_areas, include_parallel=False):
+    import re
 
     lines = get_lines_in_areas(app, selected_areas)
 
-    # Skapa en dict som grupperar parallella ledningar
-    parallel_groups = {}
     if include_parallel:
+        parallel_groups = {}
+
         for line in lines:
-            group_name = "_".join(line.loc_name.split("_")[:-1]) #den här kollar namnet på ledningen utan den sista siffran
-            if group_name not in parallel_groups:
-                parallel_groups[group_name] = []
-            parallel_groups[group_name].append(line)
+            match = re.match(r"(.*)_\d+$", line.loc_name)
+            group_name = match.group(1) if match else line.loc_name
+            parallel_groups.setdefault(group_name, []).append(line)
 
-    visited_groups = set()  # för att inte köra samma grupp flera gånger
+        groups = parallel_groups.values()
 
-    for line in lines:
+    else:
+        groups = [[line] for line in lines]
 
-        # Kontrollera om vi redan har hanterat denna grupp
-        if include_parallel:
-            group_name = "_".join(line.loc_name.split("_")[:-1])
-            if group_name in visited_groups:
-                continue  # hoppa över, gruppen redan hanterad
-            visited_groups.add(group_name)
+    for group_lines in groups:
 
-            # Hämta alla parallella ledningar i denna grupp
-            group_lines = parallel_groups[group_name]
+        lines_to_outage = group_lines[:2] if len(group_lines) >= 2 else group_lines
 
-            # N-2 logik
-            if len(group_lines) == 2:
-                lines_to_outage = group_lines
-            elif len(group_lines) >= 3:
-                lines_to_outage = group_lines[:2]  # ta de två första
-            else:
-                lines_to_outage = group_lines
-        else:
-            lines_to_outage = [line]
-
-        # Koppla bort ledningarna
         for l in lines_to_outage:
             l.SetAttribute('outserv', 1)
 
         print("Outaging:", [l.loc_name for l in lines_to_outage])
 
-        # Kör PTDF
         run_ptdf(app)
 
-        # Exportera PTDF med unikt namn
-        for l in lines_to_outage:
-            #export_ptdf(app, l.loc_name)
-            #group_export_name = "_".join(lines_to_outage[0].loc_name.split("_")[:-1])
-            name = lines_to_outage[0].loc_name
-            group_export_name = name.rsplit("_", 1)[0] if name.rsplit("_", 1)[1].isdigit() else name
+        name = lines_to_outage[0].loc_name
+        parts = name.rsplit("_", 1)
+        group_export_name = parts[0] if len(parts) == 2 and parts[1].isdigit() else name
 
+        export_ptdf(app, group_export_name)
 
-            export_ptdf(app, group_export_name)
-
-        # Koppla tillbaka ledningarna
         for l in lines_to_outage:
             l.SetAttribute('outserv', 0)
 
