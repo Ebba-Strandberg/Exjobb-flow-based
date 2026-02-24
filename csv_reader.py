@@ -24,11 +24,11 @@ def csv_to_df(csvFile: str, sep: str = ',') -> pd.DataFrame:
 
     df=df.iloc[:,2:]
     
-    var = ['Branch Sensitivity dPbranch/dPbus/HV-Side','Branch Sensitivity dPbranch/dPbus/Terminal i']
+    # 'Branch Sensitivity dPbranch/dPbus/HV-Side',
 
-    regex2="|".join(var)
+    var = 'Branch Sensitivity dPbranch/dPbus/Terminal i'
 
-    mask = df.iloc[0].str.contains(regex2, na=False)
+    mask = df.iloc[0].str.contains(var, na=False)
 
     filtered = df.loc[:, mask]
 
@@ -122,7 +122,7 @@ def filter_df_contingency(df: pd.DataFrame, CNECs: dict | list, CNEs: dict | lis
     
     return df
 
-def find_largest_PTDF(filepathBaseCase: str, filepathContingencyFolder: str, include: int = 1, exclude: str = None) -> pd.DataFrame:
+def find_largest_PTDF(filepathBaseCase: str, filepathContingencyFolder: str, include: int = 1, exclude: list[str] | dict | None = None) -> pd.DataFrame:
     """
     Takes a file path to a csv-file including base case PTDFs and a file path to a folder 
     including contingency case PTDFs, and returns the specified number of columns containing the largest values.
@@ -141,6 +141,8 @@ def find_largest_PTDF(filepathBaseCase: str, filepathContingencyFolder: str, inc
 
     DataFrame
     """
+  
+
     df = csv_to_df(filepathBaseCase)
     
     for name in os.listdir(filepathContingencyFolder):
@@ -151,8 +153,20 @@ def find_largest_PTDF(filepathBaseCase: str, filepathContingencyFolder: str, inc
         df=df.join(df_cont)
 
     if exclude != None:
-        df = df.loc[:, ~df.columns.str.contains(exclude)]
 
+        exclude_list = []
+
+        if isinstance(exclude,dict):
+            for key in exclude.keys():
+                exclude_list.append(key)
+        else: exclude_list=exclude
+
+        regex = "|".join(exclude_list)
+
+        df = df.loc[:, ~df.columns.str.contains(regex, na=False)]
+
+    print(df.shape[1])
+    
     return _find_largest_PTDF(df, include)
 
 def _find_largest_PTDF(df: pd.DataFrame, include: int = 1) -> pd.DataFrame:
