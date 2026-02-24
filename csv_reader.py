@@ -69,29 +69,24 @@ def filter_df(df: pd.DataFrame,CNEs: dict | list) -> pd.DataFrame:
     
     return filtered_df
 
-def filter_df_contingency(df: pd.DataFrame, CNECs: dict | list, CNEs: dict | list | None = None, 
-                          filepathToFolder: str = './ptdf_results') -> pd.DataFrame:
+def filter_df_contingency(filepathBaseCase: str, CNEs: dict | list,
+                          filepathToFolder: str, CNECs: dict | list,) -> pd.DataFrame:
     """
-    Takes a dataframe with PTDFs for CNEs AND a list or dictionary of CNECs
-                            OR
-    an unfiltered dataframe it all basecase PTDFs AND a list or dictionary of CNEs AND 
-    a list or dictionary of CNECs
-
-    also takes a the filepath to the folder where CNEC PTDFs are located
+    Takes the filepath to the base case PTDF, a list or dict of CNEs, a file path to the folder where the contingency
+    PTDFs are located, and a list or dict of CNECs
 
     returns a datafram complete with all PTDFs of CNEs and CNECs
 
     Parameters
     ----------
-    df : DataFrame
-        DataFrame with PTDFs for CNEs or unfiltered dataframe with all basecase PTDFs
+    filepathBaseCase
+        File path to base case PTDF csv file
     CNECs : dict | list
-        Dictionary containing CNEC element names as keys or list of CNEC element names
-    CNEs : dict | list | None
-        Dictionary containing CNE element names as keys or list of CNE element names, if df is unfiltered. 
-        If df is already filtered with CNEs, this parameter can be left out.
+        Dict of CNEC element names as keys or list of CNEC element names
+    CNEs : dict | list 
+        Dict of CNE element names as keys or list of CNEC element names
     filepathToFolder : str
-        The filepath to the folder where CNEC PTDF csv files are located. Default is './ptdf_results'.
+        The filepath to the folder where CNEC PTDF csv files are located
     
     Returns
     -------
@@ -102,8 +97,8 @@ def filter_df_contingency(df: pd.DataFrame, CNECs: dict | list, CNEs: dict | lis
     cont_dfs={}
     CNECList = []
 
-    if CNEs != None:
-        df=filter_df(df,CNEs)
+    baseCase_df = csv_to_df(filepathBaseCase)
+    df=filter_df(baseCase_df,CNEs)
 
     if isinstance(CNECs,dict):
         for key in CNECs.keys():
@@ -115,8 +110,7 @@ def filter_df_contingency(df: pd.DataFrame, CNECs: dict | list, CNEs: dict | lis
         if cont not in cont_dfs.keys():
             df_cont=csv_to_df(f'{filepathToFolder}/PTDF_{cont}.csv') # find and read contingency df
             cont_dfs[cont]=df_cont # add contingecy df with the contingency as key to the dict
-        df_filtered = filter_df(cont_dfs[cont], {line: CNECs[CNEC]}) # use filter_df to find CNEC in df
-        print (df_filtered) # print filtered df to check that it is correct
+        df_filtered = filter_df(cont_dfs[cont], [f'{line}']) # use filter_df to find CNEC in df
         df_filtered.columns.values[0] += f' cont: {cont}' # rename column to include contingency in name
         df=df.join(df_filtered) # add new CNEC to current df by index
     
@@ -141,7 +135,6 @@ def find_largest_PTDF(filepathBaseCase: str, filepathContingencyFolder: str, inc
 
     DataFrame
     """
-  
 
     df = csv_to_df(filepathBaseCase)
     
@@ -151,21 +144,6 @@ def find_largest_PTDF(filepathBaseCase: str, filepathContingencyFolder: str, inc
         df_cont=csv_to_df(path)
         df_cont.columns = [oldColName + " cont: " + cont_name for oldColName in df_cont.columns]
         df=df.join(df_cont)
-
-    # if exclude != None:
-
-    #     exclude_list = []
-
-    #     if isinstance(exclude,dict):
-    #         for key in exclude.keys():
-    #             exclude_list.append(key)
-    #     else: exclude_list=exclude
-
-    #     regex = "|".join(exclude_list)
-
-    #     df = df.loc[:, ~df.columns.str.contains(regex, na=False)]
-
-    # print(df.shape[1])
     
     return _find_largest_PTDF(df, include)
 
@@ -207,7 +185,8 @@ def _find_largest_PTDF(df: pd.DataFrame, include: int = 1) -> pd.DataFrame:
     # Return new DataFrame with all rows but only the top columns
     return df.loc[:, top_cols_full]
 
-def compare_PTDF(filepathBaseCase: str, filepathContingencyFolder: str, include: int = 1) -> pd.DataFrame:
+def compare_PTDF(filepathBaseCase: str, filepathContingencyFolder: str, include: int = 1, CNECs: list[str] | None = None,
+                  contingencies: list[str] | None = None) -> pd.DataFrame:
     """
     Takes a file path to a csv-file including base case PTDFs and a file path to a folder 
     including contingency case PTDFs, and returns the specified number of columns containing the largest differences.
@@ -227,7 +206,9 @@ def compare_PTDF(filepathBaseCase: str, filepathContingencyFolder: str, include:
     """
 
     BaseCase_df = csv_to_df(filepathBaseCase)
-    df = None
+
+    df = pd.DataFrame()
+
     for name in os.listdir(filepathContingencyFolder):
         cont_name = name.removeprefix('PTDF_').removesuffix('.csv')
         path = os.path.join(filepathContingencyFolder,name)
@@ -236,13 +217,22 @@ def compare_PTDF(filepathBaseCase: str, filepathContingencyFolder: str, include:
         diff.columns = [oldColName + " cont: " + cont_name for oldColName in diff.columns]
         df = pd.concat([df, diff], axis=1)
     
-    
+    if CNECs != None and contingencies != None:
+
+        include_list = []
+
+        for cnec in CNECs:
+            for cont in contingencies:
+                include_list.append(f'{cnec} cont: {cont}')
+
+        return(filter_df(df,include_list))
+
     return _find_largest_PTDF(df, include)
 
 def _compare_PTDF(df1: pd.DataFrame, df2: pd.DataFrame, include: int = 1) -> pd.DataFrame:
     """
     Takes two dataframes and subtracts all the numerical values in the corresponding cells,
-    then returns a dataframe including the specified number of columns containing the largest difference.
+    then returns a dataframe with the difference between the two original.
 
     Parameters
     ----------
