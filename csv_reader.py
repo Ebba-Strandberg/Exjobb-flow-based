@@ -57,17 +57,11 @@ def filter_df(df: pd.DataFrame,CNEs: dict | list) -> pd.DataFrame:
     if isinstance(CNEs,dict):
 
         CNEList = []
-
-        for key in CNEs.keys():
-            CNEList.append(key)
+        list(CNEs.keys())
 
     else: CNEList=CNEs
-
-    regex = "|".join(CNEList)   
-
-    filtered_df = df.filter(regex=regex)
     
-    return filtered_df
+    return df[CNEList]
 
 def filter_df_contingency(filepathBaseCase: str, CNEs: dict | list,
                           filepathToFolder: str, CNECs: dict | list,) -> pd.DataFrame:
@@ -116,7 +110,8 @@ def filter_df_contingency(filepathBaseCase: str, CNEs: dict | list,
     
     return df
 
-def find_largest_PTDF(filepathBaseCase: str, filepathContingencyFolder: str, include: int = 1) -> pd.DataFrame:
+def find_largest_PTDF(filepathBaseCase: str, filepathContingencyFolder: str, include: int = 1, CNECs: list[str] | None = None,
+                  contingencies: list[str] | None = None) -> pd.DataFrame:
     """
     Takes a file path to a csv-file including base case PTDFs and a file path to a folder 
     including contingency case PTDFs, and returns the specified number of columns containing the largest values.
@@ -144,6 +139,17 @@ def find_largest_PTDF(filepathBaseCase: str, filepathContingencyFolder: str, inc
         df_cont=csv_to_df(path)
         df_cont.columns = [oldColName + " cont: " + cont_name for oldColName in df_cont.columns]
         df=df.join(df_cont)
+    
+    if CNECs != None and contingencies != None:
+
+        include_list = []
+
+        for cnec in CNECs:
+            include_list.append(cnec)
+            for cont in contingencies:
+                include_list.append(f'{cnec} cont: {cont}')
+
+        return(df[include_list])
     
     return _find_largest_PTDF(df, include)
 
