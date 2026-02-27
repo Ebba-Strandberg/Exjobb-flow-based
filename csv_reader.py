@@ -1,5 +1,7 @@
 import pandas as pd
 import os
+import RAM
+import fref
 
 # Functions that start with _ are only meant to be used inside the file
 
@@ -114,7 +116,8 @@ def find_largest_PTDF(filepathBaseCase: str, filepathContingencyFolder: str, inc
                   contingencies: list[str] | None = None) -> pd.DataFrame:
     """
     Takes a file path to a csv-file including base case PTDFs and a file path to a folder 
-    including contingency case PTDFs, and returns the specified number of columns containing the largest values.
+    including contingency case PTDFs, and returns the specified number of columns containing the largest values. If a list
+    of CNECs and contingencies are given, returns the columns containing the values for the specified CNECs and contingencies.
 
     Parameters
     ----------
@@ -153,7 +156,7 @@ def find_largest_PTDF(filepathBaseCase: str, filepathContingencyFolder: str, inc
     
     return _find_largest_PTDF(df, include)
 
-def _find_largest_PTDF(df: pd.DataFrame, include: int = 1) -> pd.DataFrame:
+def _find_largest_PTDF(df: pd.DataFrame, include: int | None  = None) -> pd.DataFrame:
     """
     Returns the specified number of columns containing the largest values.
 
@@ -182,20 +185,20 @@ def _find_largest_PTDF(df: pd.DataFrame, include: int = 1) -> pd.DataFrame:
     col_max = num.abs().max()
 
     # Sort columns by their max values descending
-    top_cols = col_max.sort_values(ascending=False).index[:include]
-
-    # Keep only top columns from original DataFrame (including metadata row/cols)
-    # Adjust index offset for the first two metadata columns
-    top_cols_full = [df.columns[ df.iloc[1:,:].columns.get_loc(c)] for c in top_cols]
+    if include != None:
+        top_cols = col_max.sort_values(ascending=False).index[:include]
+    else: top_cols = col_max.sort_values(ascending=False).index
 
     # Return new DataFrame with all rows but only the top columns
-    return df.loc[:, top_cols_full]
+    return df.loc[:, top_cols]
 
-def compare_PTDF(filepathBaseCase: str, filepathContingencyFolder: str, include: int = 1, CNECs: list[str] | None = None,
+def compare_PTDF(filepathBaseCase: str, filepathContingencyFolder: str, include: int | None = None, CNECs: list[str] | None = None,
                   contingencies: list[str] | None = None) -> pd.DataFrame:
     """
     Takes a file path to a csv-file including base case PTDFs and a file path to a folder 
-    including contingency case PTDFs, and returns the specified number of columns containing the largest differences.
+    including contingency case PTDFs, and returns the specified number of columns containing the largest differences. If
+    instead a list of CNECs and contingencies are given, returns the columns containing the differences for the 
+    specified CNECs and contingencies.
 
     Parameters
     ----------
@@ -230,10 +233,12 @@ def compare_PTDF(filepathBaseCase: str, filepathContingencyFolder: str, include:
         for cnec in CNECs:
             for cont in contingencies:
                 include_list.append(f'{cnec} cont: {cont}')
-
         return(filter_df(df,include_list))
 
-    return _find_largest_PTDF(df, include)
+
+    if include != None:
+        return _find_largest_PTDF(df, include)
+    else: return df
 
 def _compare_PTDF(df1: pd.DataFrame, df2: pd.DataFrame, include: int = 1) -> pd.DataFrame:
     """
@@ -280,4 +285,17 @@ def _compare_PTDF(df1: pd.DataFrame, df2: pd.DataFrame, include: int = 1) -> pd.
 
     return complete_df
 
+def add_RAM(app, dataframe,
+            F_RA=0, F_RM=0, F_AAC=0,
+            RA_is_percent=False) -> pd.DataFrame:
+    
+    fref.run_ldf(app)
+    
+    ram_plus = RAM.calculate_RAM(app, dataframe, F_RA, F_RM, F_AAC, RA_is_percent, PositivRAM=True)
+    ram_minus = RAM.calculate_RAM(app, dataframe, F_RA, F_RM, F_AAC, RA_is_percent, PositivRAM=False)
+
+    dataframe.loc["RAM +"] = ram_plus.reindex(dataframe.columns, fill_value=0)
+    dataframe.loc["RAM -"] = ram_minus.reindex(dataframe.columns, fill_value=0)
+
+    return dataframe
 
