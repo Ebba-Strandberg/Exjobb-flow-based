@@ -79,7 +79,7 @@ def get_CNECs(app, selected_areas: list[str], loading: int, include_parallel: bo
     loading : float, optional
         The loading threshold for identifying CNECs.
     selected_areas : list of str, optional
-        A list of area names to consider for identifying CNCs. 
+        A list of area names to consider for identifying CNECs. 
     include_parallel : bool, optional
         If True, include n-2 contingencies for parallel lines in the analysis. Default is False.
     delta_loading : float, optional
