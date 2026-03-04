@@ -30,9 +30,11 @@ def csv_to_df(csvFile: str, sep: str = ',') -> pd.DataFrame:
 
     var = 'Branch Sensitivity dPbranch/dPbus/Terminal i'
 
-    mask = df.iloc[0].str.contains(var, na=False)
+    mask = df.iloc[0].astype(str).str.contains(var, na=False)
 
     filtered = df.loc[:, mask]
+
+    filtered = filtered.iloc[1:,:]
 
     return filtered
 
@@ -58,8 +60,7 @@ def filter_df(df: pd.DataFrame,CNEs: dict | list) -> pd.DataFrame:
     """
     if isinstance(CNEs,dict):
 
-        CNEList = []
-        list(CNEs.keys())
+        CNEList = list(CNEs.keys())
 
     else: CNEList=CNEs
     
@@ -112,7 +113,7 @@ def filter_df_contingency(filepathBaseCase: str, CNEs: dict | list,
     
     return df
 
-def find_largest_PTDF(filepathBaseCase: str, filepathContingencyFolder: str, include: int = 1, CNECs: list[str] | None = None,
+def find_largest_PTDF(filepathBaseCase: str, filepathContingencyFolder: str, include: None | int = 1, CNECs: list[str] | None = None,
                   contingencies: list[str] | None = None) -> pd.DataFrame:
     """
     Takes a file path to a csv-file including base case PTDFs and a file path to a folder 
@@ -133,9 +134,8 @@ def find_largest_PTDF(filepathBaseCase: str, filepathContingencyFolder: str, inc
 
     DataFrame
     """
-
     df = csv_to_df(filepathBaseCase)
-    
+
     for name in os.listdir(filepathContingencyFolder):
         cont_name = name.removeprefix('PTDF_').removesuffix('.csv')
         path = os.path.join(filepathContingencyFolder,name)
@@ -151,8 +151,10 @@ def find_largest_PTDF(filepathBaseCase: str, filepathContingencyFolder: str, inc
             include_list.append(cnec)
             for cont in contingencies:
                 include_list.append(f'{cnec} cont: {cont}')
-
-        return(df[include_list])
+        df = df[include_list]
+        df=df.apply(pd.to_numeric, errors="coerce")
+        df = df.round(4)
+        return df
     
     return _find_largest_PTDF(df, include)
 
@@ -173,9 +175,7 @@ def _find_largest_PTDF(df: pd.DataFrame, include: int | None  = None) -> pd.Data
     DataFrame
     """
 
-    num = df.iloc[1:,:] # remove metadata
-
-    num=num.apply(pd.to_numeric, errors='coerce')
+    num=df.apply(pd.to_numeric, errors='coerce').round(4)
     
     num = num.dropna(axis=1, how='all')
 
@@ -233,7 +233,9 @@ def compare_PTDF(filepathBaseCase: str, filepathContingencyFolder: str, include:
         for cnec in CNECs:
             for cont in contingencies:
                 include_list.append(f'{cnec} cont: {cont}')
-        return(filter_df(df,include_list))
+        rounded = filter_df(df,include_list).round(4)
+        return rounded
+        
 
 
     if include != None:
@@ -261,15 +263,9 @@ def _compare_PTDF(df1: pd.DataFrame, df2: pd.DataFrame, include: int = 1) -> pd.
     """
     df1, df2 = df1.align(df2, join="inner", axis=None) # align both index and columns, keeping only common ones
 
-    metadata = df1.iloc[[0]]
-
-    # --- REMOVE METADATA ---
-    num1 = df1.iloc[1:, :]   # rows 1:end, all columns
-    num2 = df2.iloc[1:, :]
-
     # Convert to numeric safely
-    num1 = num1.apply(pd.to_numeric, errors="coerce") 
-    num2 = num2.apply(pd.to_numeric, errors="coerce")
+    num1 = df1.apply(pd.to_numeric, errors="coerce") 
+    num2 = df2.apply(pd.to_numeric, errors="coerce")
 
     # Align again after cleanup
     num1, num2 = num1.align(num2, join="inner", axis=1)
@@ -278,12 +274,10 @@ def _compare_PTDF(df1: pd.DataFrame, df2: pd.DataFrame, include: int = 1) -> pd.
         raise ValueError("No common PTDF columns to compare.")
 
     # --- COMPUTE DIFFERENCE ---
-    diff = (num1 - num2).abs()
+    diff = (num2-num1)
+    rounded = diff.round(4)
 
-    # --- REATTACH METADATA ---
-    complete_df = pd.concat([metadata,diff])
-
-    return complete_df
+    return rounded
 
 def add_RAM(app, dataframe,
             F_RA=0, F_RM=0, F_AAC=0,
@@ -296,6 +290,8 @@ def add_RAM(app, dataframe,
 
     dataframe.loc["RAM +"] = ram_plus.reindex(dataframe.columns, fill_value=0)
     dataframe.loc["RAM -"] = ram_minus.reindex(dataframe.columns, fill_value=0)
+
+    dataframe.iloc[10:] = dataframe.iloc[10:].round(2)
 
     return dataframe
 

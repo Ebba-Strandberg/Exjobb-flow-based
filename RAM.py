@@ -31,8 +31,8 @@ def _calculate_F0(app, dataframe):
     # ==================================================
     df = dataframe.copy()
     
-    # Ta bort första raden (text-raden)
-    df = df.iloc[1:]
+    # # Ta bort första raden (text-raden)
+    # df = df.iloc[1:]
     
     # Ersätt "----" med 0
     df = df.replace("----", 0)
