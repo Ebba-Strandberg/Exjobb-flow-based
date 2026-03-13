@@ -7,11 +7,27 @@ Created on Thu Feb 26 09:40:10 2026
 import pandas as pd
 
 
-def manuell_contingency(app, cont, component):
+def manuell_contingency(app, cont, component, mode="loading"):
     """
     Kör manuell contingency och returnerar
-    loading före, efter och skillnad.
+    loading eller aktiv effekt före, efter och skillnad.
+    
+    mode:
+        "loading" -> m:loading
+        "P"       -> m:P:bus1
     """
+
+    # -------------------------------
+    # Välj attribut
+    # -------------------------------
+    if mode == "loading":
+        attr = "m:loading"
+        col_name = "Loading (%)"
+    elif mode == "P":
+        attr = "m:P:bus1"
+        col_name = "Aktiv effekt (MW)"
+    else:
+        raise ValueError("mode måste vara 'loading' eller 'P'")
 
     # Säkerställ listformat
     if isinstance(cont, str):
@@ -34,8 +50,8 @@ def manuell_contingency(app, cont, component):
     # --------------------------------------------------
     ldf.Execute()
 
-    base_loading = {
-        name: line_lookup[name].GetAttribute('m:loading')
+    base_values = {
+        name: line_lookup[name].GetAttribute(attr)
         for name in component
     }
 
@@ -48,8 +64,8 @@ def manuell_contingency(app, cont, component):
 
         ldf.Execute()
 
-        cont_loading = {
-            name: line_lookup[name].GetAttribute('m:loading')
+        cont_values = {
+            name: line_lookup[name].GetAttribute(attr)
             for name in component
         }
 
@@ -66,19 +82,20 @@ def manuell_contingency(app, cont, component):
     # 4. Skapa resultat-tabell
     # --------------------------------------------------
     result = pd.DataFrame({
-        "Loading före fel (%)": pd.Series(base_loading),
-        "Loading efter fel (%)": pd.Series(cont_loading),
+        f"{col_name} före fel": pd.Series(base_values),
+        f"{col_name} efter fel": pd.Series(cont_values),
     })
 
-    result["Skillnad (procentenheter)"] = (
-        result["Loading efter fel (%)"] -
-        result["Loading före fel (%)"]
+    result["Skillnad"] = (
+        result[f"{col_name} efter fel"] -
+        result[f"{col_name} före fel"]
     )
 
-    # Valfri relativ förändring
     result["Relativ förändring (%)"] = (
-        result["Skillnad (procentenheter)"] /
-        result["Loading före fel (%)"] * 100
+        result["Skillnad"] /
+        result[f"{col_name} före fel"] * 100
     )
 
     return result
+
+
