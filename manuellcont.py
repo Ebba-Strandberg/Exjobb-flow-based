@@ -86,15 +86,26 @@ def manuell_contingency(app, cont, component, mode="loading"):
         f"{col_name} efter fel": pd.Series(cont_values),
     })
 
-    result["Skillnad"] = (
+    diff = (
         result[f"{col_name} efter fel"] -
         result[f"{col_name} före fel"]
     )
+    
+    if mode == "P":
+        diff = abs(diff)
+    
+    result["Skillnad"] = diff
 
-    result["Relativ förändring (%)"] = (
+    rel_diff = (
         result["Skillnad"] /
         result[f"{col_name} före fel"] * 100
     )
+    
+    # Absolut relativ förändring bara för P
+    if mode == "P":
+        rel_diff = abs(rel_diff)
+    
+    result["Relativ förändring (%)"] = rel_diff
 
     return result
 
