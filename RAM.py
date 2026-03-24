@@ -11,7 +11,7 @@ Created on Tue Feb 17 13:37:15 2026
 import pandas as pd
 import numpy as np
 
-def _calculate_F0(app, dataframe):
+def _calculate_F0(app, dataframe, results_mancont: pd.DataFrame):
     
     """
     Beräknar:
@@ -47,26 +47,39 @@ def _calculate_F0(app, dataframe):
     # ==================================================
     # 3. HÄMTA F_ref AUTOMATISKT FRÅN KOLUMNNAMN
     # ==================================================
-    lines = app.GetCalcRelevantObjects('*.ElmLne')
+    # lines = app.GetCalcRelevantObjects('*.ElmLne')
 
-    # skapa lookup-dict (snabbare än next i loop)
-    line_lookup = {l.loc_name: l for l in lines}
+    # # skapa lookup-dict (snabbare än next i loop)
+    # line_lookup = {l.loc_name: l for l in lines}
 
-    F_ref = {}
+    # F_ref = {}
 
-    for col in df.columns:
+    # for col in df.columns:
 
-        # om kolumnen innehåller "cont:" → ta bort den delen
-        clean_name = col.split(" cont:")[0].strip()
+    #     # om kolumnen innehåller "cont:" → ta bort den delen
+    #     clean_name = col.split(" cont:")[0].strip()
 
-        if clean_name not in line_lookup:
-            raise ValueError(f"{clean_name} hittades inte i modellen")
+    #     if clean_name not in line_lookup:
+    #         raise ValueError(f"{clean_name} hittades inte i modellen")
 
-        obj = line_lookup[clean_name]
+    #     obj = line_lookup[clean_name]
 
-        # Aktiv effekt från bus1
-        F_ref[col] = obj.GetAttribute('m:P:bus1')
+    #     # Aktiv effekt från bus1
+    #     F_ref[col] = obj.GetAttribute('m:P:bus1')
 
+    # F_ref_series = pd.Series(F_ref)
+
+    F_ref_list = []
+    for i in range(dataframe.shape[1]//2):
+        for j in range(2):
+            F_ref_list.append(results_mancont.iloc[i,j])
+    
+    row_nbr = 0
+    F_ref={}
+    for col in dataframe.columns:
+        F_ref[col]=F_ref_list[row_nbr]
+        row_nbr+=1
+    
     F_ref_series = pd.Series(F_ref)
 
 
@@ -127,7 +140,7 @@ def _calculate_Fmax(app, dataframe):
 
 
 
-def calculate_RAM(app, dataframe,
+def calculate_RAM(app, dataframe,results_mancont,
                   F_RA=0, F_RM=0, F_AAC=0,
                   RA_is_percent=False,
                   PositivRAM=True):
@@ -148,7 +161,7 @@ def calculate_RAM(app, dataframe,
     # --------------------------------------------------
     # 1. Hämta F0 och Fmax
     # --------------------------------------------------
-    F0 = _calculate_F0(app, dataframe)
+    F0 = _calculate_F0(app, dataframe,results_mancont)
     Fmax = _calculate_Fmax(app, dataframe)
 
     if not PositivRAM:
