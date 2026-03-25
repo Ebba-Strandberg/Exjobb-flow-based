@@ -274,19 +274,19 @@ def _compare_PTDF(df1: pd.DataFrame, df2: pd.DataFrame, include: int = 1) -> pd.
         raise ValueError("No common PTDF columns to compare.")
 
     # --- COMPUTE DIFFERENCE ---
-    diff = (num2-num1)
+    diff = abs(num2)-abs(num1)
     rounded = diff.round(4)
 
     return rounded
 
-def add_RAM(app, dataframe,
+def add_RAM(app, dataframe, results_mancont,
             F_RA=0, F_RM=0, F_AAC=0,
             RA_is_percent=False) -> pd.DataFrame:
     
     fref.run_ldf(app)
     
-    ram_plus = RAM.calculate_RAM(app, dataframe, F_RA, F_RM, F_AAC, RA_is_percent, PositivRAM=True)
-    ram_minus = RAM.calculate_RAM(app, dataframe, F_RA, F_RM, F_AAC, RA_is_percent, PositivRAM=False)
+    ram_plus = RAM.calculate_RAM(app, dataframe, results_mancont, F_RA, F_RM, F_AAC, RA_is_percent, PositivRAM=True)
+    ram_minus = RAM.calculate_RAM(app, dataframe, results_mancont, F_RA, F_RM, F_AAC, RA_is_percent, PositivRAM=False)
 
     dataframe.loc["RAM +"] = ram_plus.reindex(dataframe.columns, fill_value=0)
     dataframe.loc["RAM -"] = ram_minus.reindex(dataframe.columns, fill_value=0)
