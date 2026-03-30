@@ -279,14 +279,14 @@ def _compare_PTDF(df1: pd.DataFrame, df2: pd.DataFrame, include: int = 1) -> pd.
 
     return rounded
 
-def add_RAM(app, dataframe, results_mancont,
+def add_RAM(app, dataframe: pd.DataFrame, results_mancont: pd.DataFrame | None = None, case_if_traditional: int | None = None,
             F_RA=0, F_RM=0, F_AAC=0,
-            RA_is_percent=False) -> pd.DataFrame:
+            RM_is_percent=False) -> pd.DataFrame:
     
     fref.run_ldf(app)
     
-    ram_plus = RAM.calculate_RAM(app, dataframe, results_mancont, F_RA, F_RM, F_AAC, RA_is_percent, PositivRAM=True)
-    ram_minus = RAM.calculate_RAM(app, dataframe, results_mancont, F_RA, F_RM, F_AAC, RA_is_percent, PositivRAM=False)
+    ram_plus = RAM.calculate_RAM(app, dataframe, results_mancont, case_if_traditional, F_RA, F_RM, F_AAC, RM_is_percent, PositivRAM=True)
+    ram_minus = RAM.calculate_RAM(app, dataframe, results_mancont, case_if_traditional, F_RA, F_RM, F_AAC, RM_is_percent, PositivRAM=False)
 
     dataframe.loc["RAM +"] = ram_plus.reindex(dataframe.columns, fill_value=0)
     dataframe.loc["RAM -"] = ram_minus.reindex(dataframe.columns, fill_value=0)
